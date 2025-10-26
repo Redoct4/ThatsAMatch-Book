@@ -1,138 +1,37 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-  <meta charset="utf-8" />
-  <title>MindAR - Video Loop</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-
-  <!-- 1) A-Frame primero -->
+  <meta charset="utf-8">
+  <title>MindAR Video</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <!-- 2) MindAR después -->
   <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
-  <style>
-    html,body { margin:0; height:100%; background:#000; overflow:hidden; }
-    #startButton {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: 24px;
-      z-index: 10;
-      padding: 10px 18px;
-      background: rgba(255,255,255,0.12);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      backdrop-filter: blur(4px);
-      font-family: sans-serif;
-    }
-    video { display:none; } /* dejar el elemento video oculto (usamos como textura) */
-  </style>
+  <style>body,html{margin:0;overflow:hidden;background:#000} video{display:none}</style>
 </head>
 <body>
-  <!-- Video asset (misma carpeta que index.html) -->
-  <video id="videoLoop" src="./loop.mp4" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous"></video>
 
-  <!-- Botón de inicio para asegurar permisos en móviles si hace falta -->
-  <button id="startButton">Start AR</button>
+<video id="v" src="./loop.mp4" loop muted playsinline preload="auto"></video>
 
-  <!-- Escena MindAR + A-Frame -->
-  <a-scene
-    vr-mode-ui="enabled: false"
-    renderer="colorManagement: true, physicallyCorrectLights: true"
-    mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 1; autoStart: false;"
-    embedded
-  >
-    <a-assets>
-      <!-- No necesitamos añadir <img> aquí porque el video ya está en DOM -->
-    </a-assets>
+<a-scene
+  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;"
+  vr-mode-ui="enabled:false"
+  device-orientation-permission-ui="enabled:false"
+>
+  <a-assets></a-assets>
 
-    <!-- Target index 0 (ajusta si tu target es otro índice) -->
-    <a-entity id="target0" mindar-image-target="targetIndex: 0">
-      <!-- Plano que usará la textura del video -->
-      <!-- width/height ajustables; shader flat para evitar iluminación realista -->
-      <a-plane id="videoPlane"
-               position="0 0 0"
-               rotation="-90 0 0"
-               width="1"
-               height="0.5625"   <!-- proporción 16:9 -->
-               material="shader: flat; src: #videoLoop;">
-      </a-plane>
-    </a-entity>
+  <a-entity mindar-image-target="targetIndex:0">
+    <a-plane src="#v" position="0 0 0" rotation="-90 0 0" width="1" height="0.5625"
+             material="shader: flat;"></a-plane>
+  </a-entity>
 
-    <!-- Cámara requerida por A-Frame -->
-    <a-camera position="0 0 0"></a-camera>
-  </a-scene>
+  <a-camera look-controls="enabled:false"></a-camera>
+</a-scene>
 
-  <script>
-    const scene = document.querySelector("a-scene");
-    const startButton = document.getElementById("startButton");
-    const video = document.getElementById("videoLoop");
-    const target = document.getElementById("target0");
+<script>
+  const video = document.querySelector('#v');
+  const target = document.querySelector('[mindar-image-target]');
+  target.addEventListener('targetFound', ()=>video.play());
+  target.addEventListener('targetLost', ()=>video.pause());
+</script>
 
-    // Función para arrancar MindAR (pide permisos de cámara)
-    async function startAR() {
-      try {
-        // start MindAR (inicia la cámara y el motor)
-        await scene.components['mindar-image'].start();
-        // ocultar botón después de iniciar
-        startButton.style.display = 'none';
-      } catch (e) {
-        console.error("Error iniciando MindAR:", e);
-        alert("No se pudo iniciar la cámara. Revisa permisos o consola para más detalle.");
-      }
-    }
-
-    // Manejo de eventos: reproducir cuando el target esté visible, pausar al perderlo
-    // targetFound / targetLost se emiten por la entidad <a-entity mindar-image-target>
-    target.addEventListener("targetFound", (e) => {
-      // volver al inicio si quieres siempre desde frame 0
-      try { video.currentTime = 0; } catch(err) { /* algunos navegadores pueden bloquear setTime */ }
-      // reproducir (debe estar muted para autoplay en muchos navegadores)
-      const p = video.play();
-      if (p !== undefined) {
-        p.catch(err => {
-          // si falla por autoplay policy, mostramos el botón para que el usuario interactúe
-          console.warn("Autoplay blockó video:", err);
-          startButton.style.display = 'block';
-        });
-      }
-    });
-
-    target.addEventListener("targetLost", (e) => {
-      video.pause();
-    });
-
-    // Botón Start AR: lanza la escena y además intenta reproducir el video (por interacción del usuario)
-    startButton.addEventListener("click", async () => {
-      // Si el motor MindAR no está arrancado, lo arrancamos
-      if (!scene.hasLoaded) {
-        // wait scene load
-        await new Promise(res => {
-          scene.addEventListener('loaded', res, {once:true});
-        });
-      }
-      await startAR();
-      // interacción del usuario: intenta reproducir el video (para desbloquear audio si quitas muted)
-      try { await video.play(); }
-      catch(e){ /* ignore */ }
-    });
-
-    // Si quieres auto-start en navegadores que permiten autoplay y cámara sin interacción:
-    // intenta iniciar automáticamente (si falla, el usuario verá el botón)
-    (async () => {
-      try {
-        await scene.addEventListener ? null : null;
-        // Esperar que la escena cargue
-        await new Promise(res => scene.addEventListener('loaded', res, {once:true}));
-        // Intento de autoarranque
-        await scene.components['mindar-image'].start();
-        startButton.style.display = 'none';
-      } catch (err) {
-        // auto-start falló — dejamos el botón visible para que el usuario dispare la experiencia
-        console.log("Auto-start falló (permiso/autoplay), muestra botón.", err);
-      }
-    })();
-  </script>
 </body>
 </html>
