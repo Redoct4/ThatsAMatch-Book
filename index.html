@@ -1,36 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>MindAR Video</title>
+  <meta charset="UTF-8">
+  <title>MindAR Video Loop</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  <style>body,html{margin:0;overflow:hidden;background:#000} video{display:none}</style>
+  <style>
+    html, body { margin:0; padding:0; overflow:hidden; background:#000; height:100%; }
+    video { display:none; }
+    #startButton {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      font-size: 18px;
+      color: #fff;
+      background: rgba(0,0,0,0.6);
+      border: 2px solid #fff;
+      border-radius: 8px;
+      z-index: 10;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
 
-<video id="v" src="./loop.mp4" loop muted playsinline preload="auto"></video>
+<!-- Video oculto -->
+<video id="videoLoop" src="./loop.mp4" preload="auto" loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
 
+<!-- Botón de inicio para móviles -->
+<button id="startButton">Start AR</button>
+
+<!-- Escena MindAR -->
 <a-scene
-  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;"
+  mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 1; autoStart: false;"
   vr-mode-ui="enabled:false"
   device-orientation-permission-ui="enabled:false"
+  embedded
 >
   <a-assets></a-assets>
 
-  <a-entity mindar-image-target="targetIndex:0">
-    <a-plane src="#v" position="0 0 0" rotation="-90 0 0" width="1" height="0.5625"
-             material="shader: flat;"></a-plane>
+  <!-- Target index 0 -->
+  <a-entity id="target0" mindar-image-target="targetIndex: 0">
+    <a-plane id="videoPlane"
+             width="1"
+             height="0.5625"
+             rotation="-90 0 0"
+             position="0 0 0"
+             material="shader: flat; src: #videoLoop">
+    </a-plane>
   </a-entity>
 
-  <a-camera look-controls="enabled:false"></a-camera>
+  <a-camera position="0 0 0"></a-camera>
 </a-scene>
 
 <script>
-  const video = document.querySelector('#v');
-  const target = document.querySelector('[mindar-image-target]');
-  target.addEventListener('targetFound', ()=>video.play());
-  target.addEventListener('targetLost', ()=>video.pause());
+  const startButton = document.getElementById("startButton");
+  const scene = document.querySelector("a-scene");
+  const video = document.getElementById("videoLoop");
+  const target = document.getElementById("target0");
+
+  // Cuando se toca Start AR
+  startButton.addEventListener("click", async () => {
+    try {
+      await scene.components['mindar-image'].start(); // inicia la cámara y motor AR
+      startButton.style.display = 'none';
+    } catch (err) {
+      console.error("No se pudo iniciar MindAR:", err);
+      alert("Error al iniciar la cámara. Revisa permisos.");
+    }
+  });
+
+  // Reproducir / pausar video al detectar el target
+  target.addEventListener("targetFound", () => {
+    try { video.currentTime = 0; } catch(e){}
+    video.play().catch(err => console.warn("Autoplay bloqueado:", err));
+  });
+  target.addEventListener("targetLost", () => {
+    video.pause();
+  });
 </script>
 
 </body>
