@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-  <title>MindAR - Video 2D en bucle al escanear</title>
+  <title>MindAR - Video 2D en bucle (auto start)</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
@@ -12,38 +12,36 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #000; }
-    #startButton {
-      position: absolute; z-index: 5; left: 50%; top: 12px; transform: translateX(-50%);
-      padding: 10px 18px; font-size: 16px; border-radius: 6px;
-      background: #1e88e5; color: white; border: none;
-    }
+    body { margin: 0; background: #000; }
     #hint {
-      position: absolute; left: 10px; bottom: 10px; color: white; z-index: 5;
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      color: white;
+      z-index: 10;
       text-shadow: 0 0 6px rgba(0,0,0,0.8);
+      font-family: Arial, sans-serif;
     }
   </style>
 </head>
 <body>
-  <!-- Botón opcional para garantizar el gesto de usuario en móviles (si el navegador lo requiere) -->
-  <button id="startButton">Iniciar AR</button>
-  <div id="hint">Apunta la cámara al target. Se reproducirá un video en bucle mientras el target esté visible.</div>
+  <div id="hint">Apunta la cámara al target. El video se reproducirá en bucle mientras el target esté visible.</div>
 
   <a-scene
-    embedded
-    vr-mode-ui="enabled: false"
     mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 1;"
+    vr-mode-ui="enabled: false"
     renderer="colorManagement: true, physicallyCorrectLights: true"
     device-orientation-permission-ui="enabled: false"
   >
     <a-assets>
-      <!-- Video: recomiendo MP4 (H.264). Está configurado muted + playsinline para permitir autoplay en la mayoría de navegadores -->
+      <!-- Video en la raíz del proyecto: ./loop.mp4 -->
+      <!-- MUST be muted & playsinline to maximize chances of autoplay -->
       <video id="loopVideo" src="./loop.mp4" crossorigin="anonymous" loop playsinline webkit-playsinline preload="auto" muted></video>
     </a-assets>
 
-    <!-- Target index 0: solo un plano 2D que muestra el video como textura -->
+    <!-- Target que mostrará únicamente el video en un plano 2D -->
     <a-entity id="target-0" mindar-image-target="targetIndex: 0">
-      <!-- Ajusta width/height para que coincida con la relación de aspecto del video -->
+      <!-- Ajusta width/height según la relación de aspecto del video -->
       <a-plane id="video-plane"
                width="1"
                height="0.5625"
@@ -59,62 +57,80 @@
 
   <script>
     (function () {
-      const startButton = document.getElementById('startButton');
       const video = document.getElementById('loopVideo');
       const scene = document.querySelector('a-scene');
       const target = document.getElementById('target-0');
 
-      // Asegurarse de que el video esté silenciado (muchos navegadores permiten autoplay si está muted)
+      // Aseguramos propiedades que favorecen autoplay en móviles/navegadores
       video.muted = true;
       video.loop = true;
       video.playsInline = true;
 
-      // Función para iniciar MindAR (necesaria en algunos móviles por política de getUserMedia/autoplay)
-      async function startAR() {
-        try {
-          // Intentar reproducir y pausar para "desbloquear" reproducción en algunos navegadores
-          try { await video.play(); video.pause(); video.currentTime = 0; } catch(e){ /* no crítico */ }
+      // Explicación rápida del error que viste:
+      // "Cannot read properties of undefined (reading 'start')" ocurre porque
+      // se estaba intentando llamar scene.components['mindar-image'].start() antes de que A-Frame/MindAR
+      // inicializasen ese componente. La forma correcta y fiable es esperar a que la escena cargue
+      // y usar el sistema: scene.systems['mindar-image'].start()
 
-          await scene.components['mindar-image'].start();
-          startButton.style.display = 'none';
+      async function startMindARAuto() {
+        // Esperamos a que A-Frame haya inicializado el renderer y los systems
+        if (!scene.systems || !scene.systems['mindar-image']) {
+          await new Promise((resolve) => {
+            const onReady = () => resolve();
+            // renderstart se dispara cuando three.js ya está preparado
+            scene.addEventListener('renderstart', onReady, { once: true });
+            // fallback por si 'renderstart' no se dispara pronto
+            scene.addEventListener('loaded', onReady, { once: true });
+            // timeout de seguridad (no ideal, pero evita bloqueo indefinido)
+            setTimeout(onReady, 2500);
+          });
+        }
+
+        const mindarSystem = scene.systems && scene.systems['mindar-image'];
+        if (!mindarSystem) {
+          console.error('MindAR system no está disponible. Comprueba que mindar-image-aframe está cargado y targets.mind existe.');
+          return;
+        }
+
+        try {
+          // Iniciamos MindAR (abre la cámara). Esto es equivalente al comportamiento "auto-start"
+          await mindarSystem.start();
+          console.log('MindAR iniciado correctamente (cámara activa).');
         } catch (err) {
-          console.error('No se pudo iniciar MindAR:', err);
-          alert('Error iniciando AR: ' + (err.message || err));
+          // Mostrar mensaje similar al que viste, pero con más contexto
+          console.error('Error iniciando AR:', err);
+          // No mostramos botón por requerimiento del usuario; solo log/alert opcional:
+          // alert('Error iniciando AR: ' + (err.message || err));
         }
       }
 
-      // Si el usuario pulsa el botón, arrancamos AR (recomendado en móviles)
-      startButton.addEventListener('click', startAR);
+      // Llamamos a la función en cuanto la página cargue
+      // Usamos load para asegurarnos de que todos los recursos están listos
+      window.addEventListener('load', startMindARAuto);
 
-      // Si prefieres intentar iniciar automáticamente sin botón, descomenta:
-      // window.addEventListener('load', startAR);
-
-      // Al detectar el target: reproducir el video (si está en pausa) y asegurarnos que se repite
+      // Controlamos reproducción del video cuando target aparece/desaparece
       target.addEventListener('targetFound', () => {
-        // Asegurarse visible (por si la escena lo oculta)
-        const plane = document.getElementById('video-plane');
-        plane.setAttribute('visible', 'true');
-
+        // reproducir el video cuando el target se detecta
         if (video.paused) {
           video.play().catch(err => {
-            // Si falla por políticas de autoplay, el botón "Iniciar AR" debe usarse para desbloquear
-            console.warn('Fallo al reproducir video automáticamente:', err);
+            // Si falla la reproducción automática, lo registramos.
+            // Nota: como el video está muted, la mayoría de navegadores permiten autoplay.
+            console.warn('No se pudo reproducir el video automáticamente al detectar target:', err);
           });
         }
       });
 
-      // Al perder el target: pausar el video para ahorrar CPU/batería
       target.addEventListener('targetLost', () => {
+        // pausar y opcionalmente resetear el video al perder el target
         if (!video.paused) {
           video.pause();
-          // opcional: resetear a 0 para que vuelva al inicio en la próxima detección
           video.currentTime = 0;
         }
       });
 
-      // Opcional: manejar cuando el usuario salga de la página o la escena se detenga
+      // Limpieza al salir de la página
       window.addEventListener('beforeunload', () => {
-        try { video.pause(); video.src = ''; } catch(e){ }
+        try { video.pause(); video.src = ''; } catch (e) { /* ignore */ }
       });
     })();
   </script>
