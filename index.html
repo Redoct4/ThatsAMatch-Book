@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <title>MindAR - Video 2D en bucle al escanear</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+
+  <!-- MindAR A-Frame integration -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #000; }
+    #startButton {
+      position: absolute; z-index: 5; left: 50%; top: 12px; transform: translateX(-50%);
+      padding: 10px 18px; font-size: 16px; border-radius: 6px;
+      background: #1e88e5; color: white; border: none;
+    }
+    #hint {
+      position: absolute; left: 10px; bottom: 10px; color: white; z-index: 5;
+      text-shadow: 0 0 6px rgba(0,0,0,0.8);
+    }
+  </style>
+</head>
+<body>
+  <!-- Botón opcional para garantizar el gesto de usuario en móviles (si el navegador lo requiere) -->
+  <button id="startButton">Iniciar AR</button>
+  <div id="hint">Apunta la cámara al target. Se reproducirá un video en bucle mientras el target esté visible.</div>
+
+  <a-scene
+    embedded
+    vr-mode-ui="enabled: false"
+    mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 1;"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
+    device-orientation-permission-ui="enabled: false"
+  >
+    <a-assets>
+      <!-- Video: recomiendo MP4 (H.264). Está configurado muted + playsinline para permitir autoplay en la mayoría de navegadores -->
+      <video id="loopVideo" src="./assets/loop.mp4" crossorigin="anonymous" loop playsinline webkit-playsinline preload="auto" muted></video>
+    </a-assets>
+
+    <!-- Target index 0: solo un plano 2D que muestra el video como textura -->
+    <a-entity id="target-0" mindar-image-target="targetIndex: 0">
+      <!-- Ajusta width/height para que coincida con la relación de aspecto del video -->
+      <a-plane id="video-plane"
+               width="1"
+               height="0.5625"
+               position="0 0 0"
+               rotation="-90 0 0"
+               material="shader: flat; src: #loopVideo;">
+      </a-plane>
+    </a-entity>
+
+    <!-- Cámara controlada por MindAR -->
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    (function () {
+      const startButton = document.getElementById('startButton');
+      const video = document.getElementById('loopVideo');
+      const scene = document.querySelector('a-scene');
+      const target = document.getElementById('target-0');
+
+      // Asegurarse de que el video esté silenciado (muchos navegadores permiten autoplay si está muted)
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+
+      // Función para iniciar MindAR (necesaria en algunos móviles por política de getUserMedia/autoplay)
+      async function startAR() {
+        try {
+          // Intentar reproducir y pausar para "desbloquear" reproducción en algunos navegadores
+          try { await video.play(); video.pause(); video.currentTime = 0; } catch(e){ /* no crítico */ }
+
+          await scene.components['mindar-image'].start();
+          startButton.style.display = 'none';
+        } catch (err) {
+          console.error('No se pudo iniciar MindAR:', err);
+          alert('Error iniciando AR: ' + (err.message || err));
+        }
+      }
+
+      // Si el usuario pulsa el botón, arrancamos AR (recomendado en móviles)
+      startButton.addEventListener('click', startAR);
+
+      // Si prefieres intentar iniciar automáticamente sin botón, descomenta:
+      // window.addEventListener('load', startAR);
+
+      // Al detectar el target: reproducir el video (si está en pausa) y asegurarnos que se repite
+      target.addEventListener('targetFound', () => {
+        // Asegurarse visible (por si la escena lo oculta)
+        const plane = document.getElementById('video-plane');
+        plane.setAttribute('visible', 'true');
+
+        if (video.paused) {
+          video.play().catch(err => {
+            // Si falla por políticas de autoplay, el botón "Iniciar AR" debe usarse para desbloquear
+            console.warn('Fallo al reproducir video automáticamente:', err);
+          });
+        }
+      });
+
+      // Al perder el target: pausar el video para ahorrar CPU/batería
+      target.addEventListener('targetLost', () => {
+        if (!video.paused) {
+          video.pause();
+          // opcional: resetear a 0 para que vuelva al inicio en la próxima detección
+          video.currentTime = 0;
+        }
+      });
+
+      // Opcional: manejar cuando el usuario salga de la página o la escena se detenga
+      window.addEventListener('beforeunload', () => {
+        try { video.pause(); video.src = ''; } catch(e){ }
+      });
+    })();
+  </script>
+</body>
+</html>
