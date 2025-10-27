@@ -1,1 +1,104 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      /* Estilos para centrar el botón de inicio */
+      #start-button-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: black;
+        z-index: 9999;
+      }
+      #start-button {
+        padding: 15px 30px;
+        font-size: 1.2em;
+        cursor: pointer;
+      }
+      #my-scene {
+        visibility: hidden; /* Ocultamos la escena inicialmente */
+      }
+    </style>
+
+        <script>
+      AFRAME.registerComponent('play-on-target-found', {
+        init: function () {
+          // El video ya está cargado y listo
+          const videoAsset = document.querySelector('#card-video');
+          const targetEntity = this.el;
+
+          targetEntity.addEventListener('targetFound', () => {
+            // Utilizamos .play() que ahora funcionará porque el usuario ya interactuó con el botón
+            videoAsset.play().catch(error => {
+              console.error("Error de reproducción después de 'targetFound':", error);
+            });
+          });
+
+          targetEntity.addEventListener('targetLost', () => {
+            // Pausar para que regrese al primer frame
+            videoAsset.pause();
+          });
+        }
+      });
+    </script>
+  </head>
+  <body>
+    
+        <div id="start-button-container">
+      <button id="start-button">TOCA PARA INICIAR LA RA</button>
+    </div>
+    
+
+        <a-scene id="my-scene" mindar-image="imageTargetSrc: ./targets.mind;" 
+              color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" 
+              vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      
+      <a-assets>
+                <video id="card-video" src="./loop.webm" 
+                loop playsinline 
+                crossorigin="anonymous" 
+                muted></video> 
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      
+      <a-entity mindar-image-target="targetIndex: 0" play-on-target-found>
+        <a-plane src="#card-video" position="0 0 0" height="2" width="1.281" rotation="0 0 0"></a-plane>
+      </a-entity>
+    </a-scene>
+  </body>
+
+  <script>
+    // 2. Lógica para el botón de inicio
+    document.getElementById('start-button').addEventListener('click', () => {
+      const scene = document.getElementById('my-scene');
+      const container = document.getElementById('start-button-container');
+      
+      // Mostrar la escena y ocultar el botón
+      container.style.display = 'none';
+      scene.style.visibility = 'visible';
+
+      // 💡 TRUCO CLAVE: Iniciar la cámara (que es parte de la escena) y forzar una reproducción mínima del video.
+      // Esto asegura que el navegador 'desbloquee' el medio
+      const videoAsset = document.getElementById('card-video');
+      
+      videoAsset.play().then(() => {
+        // Pausar inmediatamente. Ya hemos satisfecho la restricción de interacción.
+        videoAsset.pause();
+        // Opcional: Para resetear al inicio si el .webm lo permite
+        videoAsset.currentTime = 0; 
+      }).catch(error => {
+        console.error("Error al forzar la reproducción inicial:", error);
+        alert("Hubo un error al iniciar la cámara. Asegúrate de dar permisos.");
+      });
+    });
+  </script>
+</html>
 
