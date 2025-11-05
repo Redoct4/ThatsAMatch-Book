@@ -4,101 +4,116 @@
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-      /* Estilos para centrar el botón de inicio */
+      /* ... (Estilos CSS sin cambios) ... */
       #start-button-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background-color: black;
-        z-index: 9999;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; justify-content: center; align-items: center;
+        background-color: black; z-index: 9999;
       }
       #start-button {
-        padding: 15px 30px;
-        font-size: 1.2em;
-        cursor: pointer;
+        padding: 15px 30px; font-size: 1.2em; cursor: pointer;
       }
       #my-scene {
-        visibility: hidden; /* Ocultamos la escena inicialmente */
+        visibility: hidden;
       }
     </style>
 
         <script>
-      AFRAME.registerComponent('play-on-target-found', {
+      AFRAME.registerComponent('ar-video-handler', {
+        schema: {
+          videoId: {type: 'string'}, // ID del video a reproducir (ej: 'video-0')
+          targetIndex: {type: 'number'} // Índice del target (ej: 0)
+        },
         init: function () {
-          // El video ya está cargado y listo
-          const videoAsset = document.querySelector('#card-video');
+          const videoAsset = document.querySelector(`#${this.data.videoId}`);
           const targetEntity = this.el;
 
+          // Evento al detectar el target
           targetEntity.addEventListener('targetFound', () => {
-            // Utilizamos .play() que ahora funcionará porque el usuario ya interactuó con el botón
+            console.log(`Target ${this.data.targetIndex} encontrado. Reproduciendo ${this.data.videoId}`);
+            // Reproducir y reintentar si es necesario
             videoAsset.play().catch(error => {
-              console.error("Error de reproducción después de 'targetFound':", error);
+              console.error(`Error de reproducción en video ${this.data.videoId}:`, error);
             });
           });
 
+          // Evento al perder el target
           targetEntity.addEventListener('targetLost', () => {
-            // Pausar para que regrese al primer frame
+            console.log(`Target ${this.data.targetIndex} perdido. Pausando ${this.data.videoId}`);
             videoAsset.pause();
+            videoAsset.currentTime = 0; // Reiniciar para que empiece de nuevo
           });
         }
       });
     </script>
   </head>
   <body>
-    
-        <div id="start-button-container">
-      <button id="start-button">That's a Match!</button>
+    
+    <div id="start-button-container">
+      <button id="start-button">TOCA PARA INICIAR LA RA</button>
     </div>
-    
+    
 
-        <a-scene id="my-scene" mindar-image="imageTargetSrc: ./targets.mind;" 
-              color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" 
+    <a-scene id="my-scene" mindar-image="imageTargetSrc: ./targets.mind;" 
+              color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" 
               vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-      
+      
       <a-assets>
-                <video id="card-video" src="./loop.webm" 
-                loop playsinline 
-                crossorigin="anonymous" 
-                muted></video> 
+                <video id="video-0" src="./video-0.webm" loop playsinline crossorigin="anonymous" muted></video>
+        <video id="video-1" src="./video-1.webm" loop playsinline crossorigin="anonymous" muted></video>
+        <video id="video-2" src="./video-2.webm" loop playsinline crossorigin="anonymous" muted></video>
+        <video id="video-3" src="./video-3.webm" loop playsinline crossorigin="anonymous" muted></video>
+        <video id="video-4" src="./video-4.webm" loop playsinline crossorigin="anonymous" muted></video>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-      
-      <a-entity mindar-image-target="targetIndex: 0" play-on-target-found>
-        <a-plane src="#card-video" position="0 0 0" height="2" width="1.281" rotation="0 0 0"></a-plane>
+      
+            
+            <a-entity mindar-image-target="targetIndex: 0" ar-video-handler="videoId: video-0; targetIndex: 0">
+        <a-plane src="#video-0" position="0 0 0" height="2" width="1.281" rotation="0 0 0"></a-plane>
+      </a-entity>
+
+            <a-entity mindar-image-target="targetIndex: 1" ar-video-handler="videoId: video-1; targetIndex: 1">
+        <a-plane src="#video-1" position="0 0 0" height="2" width="1.281" rotation="0 0 0"></a-plane>
+      </a-entity>
+
+            <a-entity mindar-image-target="targetIndex: 2" ar-video-handler="videoId: video-2; targetIndex: 2">
+        <a-plane src="#video-2" position="0 0 0" height="2" width="1.281" rotation="0 0 0"></a-plane>
+      </a-entity>
+
+            <a-entity mindar-image-target="targetIndex: 3" ar-video-handler="videoId: video-3; targetIndex: 3">
+        <a-plane src="#video-3" position="0 0 0" height="2" width="1.281" rotation="0 0 0"></a-plane>
+      </a-entity>
+
+            <a-entity mindar-image-target="targetIndex: 4" ar-video-handler="videoId: video-4; targetIndex: 4">
+        <a-plane src="#video-4" position="0 0 0" height="2" width="1.281" rotation="0 0 0"></a-plane>
       </a-entity>
     </a-scene>
   </body>
 
   <script>
-    // 2. Lógica para el botón de inicio
+    // Lógica para el botón de inicio (modificada para manejar múltiples videos)
     document.getElementById('start-button').addEventListener('click', () => {
       const scene = document.getElementById('my-scene');
       const container = document.getElementById('start-button-container');
-      
-      // Mostrar la escena y ocultar el botón
+      
       container.style.display = 'none';
       scene.style.visibility = 'visible';
 
-      // 💡 TRUCO CLAVE: Iniciar la cámara (que es parte de la escena) y forzar una reproducción mínima del video.
-      // Esto asegura que el navegador 'desbloquee' el medio
-      const videoAsset = document.getElementById('card-video');
-      
-      videoAsset.play().then(() => {
-        // Pausar inmediatamente. Ya hemos satisfecho la restricción de interacción.
-        videoAsset.pause();
-        // Opcional: Para resetear al inicio si el .webm lo permite
-        videoAsset.currentTime = 0; 
-      }).catch(error => {
-        console.error("Error al forzar la reproducción inicial:", error);
-        alert("Hubo un error al iniciar la cámara. Asegúrate de dar permisos.");
-      });
+      // 💡 CLAVE: Iterar sobre todos los videos para forzar el desbloqueo
+      const videoAssets = document.querySelectorAll('video');
+
+      // Usamos Promise.all para asegurarnos de que todos los videos se intenten reproducir
+      Promise.all(Array.from(videoAssets).map(video => 
+        video.play().catch(e => console.warn(`Error al desbloquear video ${video.id}:`, e))
+      )).then(() => {
+        // Una vez desbloqueados, pausamos todos para que esperen al target
+        videoAssets.forEach(video => {
+          video.pause();
+          video.currentTime = 0;
+        });
+        console.log("Todos los videos han sido desbloqueados y pausados.");
+      });
     });
   </script>
 </html>
-
