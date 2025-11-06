@@ -4,14 +4,58 @@
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-      /* ... (Estilos CSS sin cambios) ... */
+      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+
+      /* Contenedor de la introducción */
+      #intro-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url('./background.png'); /* IMAGEN DE FONDO */
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000; /* Asegurarse de que esté por encima de todo */
+        transition: opacity 1s ease-out; /* Transición suave al desaparecer */
+      }
+
+      /* Estilo para el logo */
+      #intro-logo {
+        width: 0;
+        height: auto;
+        opacity: 0;
+        transition: opacity 1.5s ease-in, width 1.5s ease-in; /* Animación de fade-in y crecimiento */
+      }
+
+      /* Contenedor del botón de inicio de RA (ahora será la instrucción) */
       #start-button-container {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        display: flex; justify-content: center; align-items: center;
-        background-color: black; z-index: 9999;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column; /* Para centrar el texto y el botón si fuera necesario */
+        justify-content: center;
+        align-items: center;
+        background-color: rgba(0, 0, 0, 0.7); /* Fondo semi-transparente */
+        z-index: 9999;
+        color: white;
+        font-size: 1.5em;
+        text-align: center;
+        visibility: hidden; /* Oculto inicialmente */
+        opacity: 0;
+        transition: opacity 1s ease-out, visibility 1s;
       }
       #start-button {
-        padding: 15px 30px; font-size: 1.2em; cursor: pointer;
+        padding: 15px 30px;
+        font-size: 1.2em;
+        cursor: pointer;
+        margin-top: 20px; /* Espacio entre el texto y el botón */
       }
       #my-scene {
         visibility: hidden;
@@ -21,38 +65,40 @@
         <script>
       AFRAME.registerComponent('ar-video-handler', {
         schema: {
-          videoId: {type: 'string'}, // ID del video a reproducir (ej: 'video-0')
-          targetIndex: {type: 'number'} // Índice del target (ej: 0)
+          videoId: {type: 'string'},
+          targetIndex: {type: 'number'}
         },
         init: function () {
           const videoAsset = document.querySelector(`#${this.data.videoId}`);
           const targetEntity = this.el;
 
-          // Evento al detectar el target
           targetEntity.addEventListener('targetFound', () => {
             console.log(`Target ${this.data.targetIndex} encontrado. Reproduciendo ${this.data.videoId}`);
-            // Reproducir y reintentar si es necesario
             videoAsset.play().catch(error => {
               console.error(`Error de reproducción en video ${this.data.videoId}:`, error);
             });
           });
 
-          // Evento al perder el target
           targetEntity.addEventListener('targetLost', () => {
             console.log(`Target ${this.data.targetIndex} perdido. Pausando ${this.data.videoId}`);
             videoAsset.pause();
-            videoAsset.currentTime = 0; // Reiniciar para que empiece de nuevo
+            videoAsset.currentTime = 0;
           });
         }
       });
     </script>
   </head>
   <body>
-    
-    <div id="start-button-container">
-      <button id="start-button">THAT'S A MATCH</button>
+    
+            <div id="intro-screen">
+      <img id="intro-logo" src="./logo.png" alt="Logo de la experiencia" />
     </div>
-    
+
+        <div id="start-button-container">
+      <p>COMIENZA A ESCANEAR LAS POLAROIDS</p>
+      <button id="start-button">INICIAR CÁMARA</button>
+    </div>
+    
 
     <a-scene id="my-scene" mindar-image="imageTargetSrc: ./targets.mind;" 
               color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" 
@@ -92,28 +138,56 @@
   </body>
 
   <script>
-    // Lógica para el botón de inicio (modificada para manejar múltiples videos)
-    document.getElementById('start-button').addEventListener('click', () => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const introScreen = document.getElementById('intro-screen');
+      const introLogo = document.getElementById('intro-logo');
+      const startButtonContainer = document.getElementById('start-button-container');
+      const startButton = document.getElementById('start-button');
       const scene = document.getElementById('my-scene');
-      const container = document.getElementById('start-button-container');
-      
-      container.style.display = 'none';
-      scene.style.visibility = 'visible';
 
-      // 💡 CLAVE: Iterar sobre todos los videos para forzar el desbloqueo
-      const videoAssets = document.querySelectorAll('video');
+      // Paso 1: Mostrar la pantalla de introducción con el fondo
+      // La pantalla de introducción ya está visible por defecto en CSS
 
-      // Usamos Promise.all para asegurarnos de que todos los videos se intenten reproducir
-      Promise.all(Array.from(videoAssets).map(video => 
-        video.play().catch(e => console.warn(`Error al desbloquear video ${video.id}:`, e))
-      )).then(() => {
-        // Una vez desbloqueados, pausamos todos para que esperen al target
-        videoAssets.forEach(video => {
-          video.pause();
-          video.currentTime = 0;
-        });
-        console.log("Todos los videos han sido desbloqueados y pausados.");
-      });
-    });
+      setTimeout(() => {
+        // Paso 2: Mostrar y animar el logo
+        introLogo.style.opacity = 1;
+        introLogo.style.width = '60%'; // Ajusta el tamaño final del logo
+        
+        // Esperar a que la animación del logo termine
+        setTimeout(() => {
+          // Paso 3: Desaparecer la pantalla de introducción y mostrar la instrucción
+          introScreen.style.opacity = 0;
+          setTimeout(() => {
+            introScreen.style.display = 'none'; // Eliminar del flujo una vez oculta
+
+            startButtonContainer.style.visibility = 'visible';
+            startButtonContainer.style.opacity = 1;
+
+            // Opcional: enfocar el botón para mejor accesibilidad móvil
+            startButton.focus();
+
+          }, 1000); // Coincide con la duración de la transición de opacidad de intro-screen
+        }, 2500); // 1.5s de la animación del logo + 1s de espera extra
+      }, 1000); // Espera inicial de 1 segundo antes de que aparezca el logo
+
+      // Lógica del botón de inicio (se mantiene similar, pero ahora es "INICIAR CÁMARA")
+      startButton.addEventListener('click', () => {
+        startButtonContainer.style.display = 'none';
+        scene.style.visibility = 'visible';
+
+        const videoAssets = document.querySelectorAll('video');
+        Promise.all(Array.from(videoAssets).map(video => 
+          video.play().catch(e => console.warn(`Error al desbloquear video ${video.id}:`, e))
+        )).then(() => {
+          videoAssets.forEach(video => {
+            video.pause();
+            video.currentTime = 0;
+          });
+          console.log("Todos los videos han sido desbloqueados y pausados.");
+        }).catch(error => {
+          console.error("Error general al desbloquear videos:", error);
+          alert("Hubo un error al iniciar. Asegúrate de dar permisos de cámara.");
+        });
+      });
   </script>
 </html>
