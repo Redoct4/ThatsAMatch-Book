@@ -196,21 +196,6 @@
           startButtonContainer.style.display = 'none';
           scene.style.visibility = 'visible';
 
-          // CLAVE: Forzar la reproducción de todos los videos para desbloquearlos
-          const videoAssets = document.querySelectorAll('video');
-          Promise.all(Array.from(videoAssets).map(video => 
-            video.play().catch(e => console.warn(`Error al desbloquear video ${video.id}:`, e))
-          )).then(() => {
-            // Pausar y resetear todos los videos inmediatamente después del desbloqueo
-            videoAssets.forEach(video => {
-              video.pause();
-              video.currentTime = 0;
-            });
-            console.log("Videos listos para la detección de targets.");
-          }).catch(error => {
-            console.error("Error general al desbloquear videos:", error);
-            alert("Hubo un error al iniciar. Asegúrate de dar permisos de cámara.");
-          });
         });
       });
     </script>
