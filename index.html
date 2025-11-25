@@ -209,26 +209,20 @@
 
         }, 500); 
 
-        // Lógica del Botón: Desbloquear el navegador para RA
+         // Lógica del Botón: Desbloquear el navegador para RA
+
         startButton.addEventListener('click', () => {
+
           startButtonContainer.style.display = 'none';
+
           scene.style.visibility = 'visible';
 
-          const videoAssets = document.querySelectorAll('video');
-          Promise.all(Array.from(videoAssets).map(video => 
-            video.play().catch(e => console.warn(`Error al desbloquear video ${video.id}:`, e))
-          )).then(() => {
-            videoAssets.forEach(video => {
-              video.pause();
-              video.currentTime = 0;
-            });
-            console.log("Videos listos para la detección de targets.");
-          }).catch(error => {
-            console.error("Error general al desbloquear videos:", error);
-            alert("Hubo un error al iniciar. Asegúrate de dar permisos de cámara.");
-          });
         });
+
       });
+
     </script>
+
   </body>
+
 </html>
