@@ -15,76 +15,65 @@
 
       /* Estilos para la Pantalla de Introducción */
       #intro-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-image: url('./background.png'); /* Fondo de la introducción */
-        background-size: cover;
-        background-position: center;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-        opacity: 1;
-        transition: opacity 1s ease-out; /* Transición para desvanecerse */
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-image: url('./background.png');
+        background-size: cover; background-position: center;
+        display: flex; justify-content: center; align-items: center;
+        z-index: 10000; opacity: 1; transition: opacity 1s ease-out;
       }
-
       /* Estilo para el Logo Animado */
       #intro-logo {
-        width: 0; /* Inicia en ancho cero */
-        height: auto;
-        opacity: 0; /* Inicia invisible */
-        max-width: 80%; /* Máximo tamaño de crecimiento */
-        /* Animación de fade-in y crecimiento */
+        width: 0; height: auto; opacity: 0; max-width: 80%;
         transition: opacity 1.5s ease-in, width 1.5s ease-in;
       }
 
-      /* Contenedor de Instrucciones y Botón (aparece después de la intro) */
+      /* Contenedor de Instrucciones y Botón */
       #start-button-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 9999;
-        color: white;
-        font-size: 1.5em;
-        text-align: center;
-        visibility: hidden; /* Oculto inicialmente */
-        opacity: 0;
-        transition: opacity 1s ease-out, visibility 1s;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; flex-direction: column; justify-content: center;
+        align-items: center; background-color: rgba(0, 0, 0, 0.7);
+        z-index: 9999; color: white; font-size: 1.5em; text-align: center;
+        visibility: hidden; opacity: 0; transition: opacity 1s ease-out, visibility 1s;
       }
       #start-button {
-        padding: 15px 30px;
-        font-size: 1.2em;
-        cursor: pointer;
-        margin-top: 20px;
+        padding: 15px 30px; font-size: 1.2em; cursor: pointer; margin-top: 20px;
       }
       
       /* Escena AR (oculta hasta que se inicia la cámara) */
       #my-scene {
         visibility: hidden;
       }
+
+      /* Nuevo estilo para el botón de enlace flotante */
+      #link-button {
+        position: fixed;
+        bottom: 10%; /* Posiciona cerca del fondo */
+        left: 50%;
+        transform: translateX(-50%); /* Centra horizontalmente */
+        padding: 15px 30px;
+        font-size: 1.5em;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        z-index: 9999; 
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.5s, visibility 0.5s;
+      }
     </style>
 
     <script>
       AFRAME.registerComponent('ar-video-handler', {
         schema: {
-          videoId: {type: 'string'}, // ID del video asociado
-          targetIndex: {type: 'number'} // Índice del target en targets.mind
+          videoId: {type: 'string'},
+          targetIndex: {type: 'number'}
         },
         init: function () {
           const videoAsset = document.querySelector(`#${this.data.videoId}`);
           const targetEntity = this.el;
 
-          // Evento al detectar el target: Reproducir video
           targetEntity.addEventListener('targetFound', () => {
             console.log(`Target ${this.data.targetIndex} encontrado. Reproduciendo ${this.data.videoId}`);
             videoAsset.play().catch(error => {
@@ -92,7 +81,6 @@
             });
           });
 
-          // Evento al perder el target: Pausar y resetear
           targetEntity.addEventListener('targetLost', () => {
             console.log(`Target ${this.data.targetIndex} perdido. Pausando ${this.data.videoId}`);
             videoAsset.pause();
@@ -100,6 +88,37 @@
           });
         }
       });
+
+      // Componente para manejar el botón de enlace
+      AFRAME.registerComponent('link-button-handler', {
+          schema: {
+              linkUrl: {type: 'string', default: 'https://ejemplo.com'},
+              targetIndex: {type: 'number'}
+          },
+          init: function () {
+              const buttonElement = document.getElementById('link-button');
+              const linkUrl = this.data.linkUrl;
+              const targetEntity = this.el;
+
+              // Asegura que el botón tenga la URL correcta
+              buttonElement.setAttribute('href', linkUrl);
+
+              targetEntity.addEventListener('targetFound', () => {
+                  console.log(`Target ${this.data.targetIndex} encontrado. Mostrando botón de enlace.`);
+                  buttonElement.style.visibility = 'visible';
+                  buttonElement.style.opacity = 1;
+              });
+
+              targetEntity.addEventListener('targetLost', () => {
+                  console.log(`Target ${this.data.targetIndex} perdido. Ocultando botón de enlace.`);
+                  buttonElement.style.opacity = 0;
+                  setTimeout(() => {
+                      buttonElement.style.visibility = 'hidden';
+                  }, 500); // Esperar la transición de 0.5s
+              });
+          }
+      });
+
     </script>
   </head>
   <body>
@@ -113,6 +132,9 @@
       <button id="start-button">INICIAR CÁMARA</button>
     </div>
     
+    <a id="link-button" href="https://ejemplo.com/pagina-del-juego" target="_blank" style="text-decoration: none;">
+      IR AL JUEGO
+    </a>
 
     <a-scene
       id="my-scene"
@@ -128,6 +150,7 @@
         <video id="video-2" src="./video-2.webm" loop playsinline crossorigin="anonymous" muted></video>
         <video id="video-3" src="./video-3.webm" loop playsinline crossorigin="anonymous" muted></video>
         <video id="video-4" src="./video-4.webm" loop playsinline crossorigin="anonymous" muted></video>
+        <img id="placeholder-5" src="./placeholder-5.png" /> 
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -135,22 +158,25 @@
       <a-entity mindar-image-target="targetIndex: 0" ar-video-handler="videoId: video-0; targetIndex: 0">
         <a-plane src="#video-0" position="0 0 0" height="3" width="1.922" rotation="0 0 0"></a-plane>
       </a-entity>
-
       <a-entity mindar-image-target="targetIndex: 1" ar-video-handler="videoId: video-1; targetIndex: 1">
         <a-plane src="#video-1" position="0 0 0" height="3" width="1.922" rotation="0 0 0"></a-plane>
       </a-entity>
-
       <a-entity mindar-image-target="targetIndex: 2" ar-video-handler="videoId: video-2; targetIndex: 2">
         <a-plane src="#video-2" position="0 0 0" height="3" width="1.922" rotation="0 0 0"></a-plane>
       </a-entity>
-
       <a-entity mindar-image-target="targetIndex: 3" ar-video-handler="videoId: video-3; targetIndex: 3">
         <a-plane src="#video-3" position="0 0 0" height="3" width="1.922" rotation="0 0 0"></a-plane>
       </a-entity>
-
       <a-entity mindar-image-target="targetIndex: 4" ar-video-handler="videoId: video-4; targetIndex: 4">
         <a-plane src="#video-4" position="0 0 0" height="3" width="1.922" rotation="0 0 0"></a-plane>
       </a-entity>
+      
+      <a-entity 
+        mindar-image-target="targetIndex: 5" 
+        link-button-handler="linkUrl: https://redoct.itch.io/thats-a-match; targetIndex: 5">
+        <a-plane src="#placeholder-5" position="0 0 0" height="3" width="1.922" rotation="0 0 0"></a-plane>
+      </a-entity>
+
     </a-scene>
 
     <script>
@@ -161,40 +187,46 @@
         const startButton = document.getElementById('start-button');
         const scene = document.getElementById('my-scene');
 
-        // Paso 1: Espera breve y luego inicia la animación del logo
+        // Lógica de la Introducción
         setTimeout(() => {
           introLogo.style.opacity = 1;
-          introLogo.style.width = '60%'; // Inicia la animación de crecimiento
+          introLogo.style.width = '60%'; 
           
-          const logoAnimationDuration = 1500; // 1.5s
-          const logoDisplayTime = 1000;      // 1s de visualización post-animación
+          const logoAnimationDuration = 1500; 
+          const logoDisplayTime = 1000;      
 
-          // Paso 2: Espera a que la animación y la visualización del logo terminen
           setTimeout(() => {
-            // Paso 3: Desvanecer la pantalla de introducción
             introScreen.style.opacity = 0;
             
-            // Paso 4: Esperar la transición de desvanecimiento (1s)
             setTimeout(() => {
-              introScreen.style.display = 'none'; // Quitar del flujo
-
-              // Paso 5: Mostrar la instrucción y el botón de inicio
+              introScreen.style.display = 'none'; 
               startButtonContainer.style.visibility = 'visible';
               startButtonContainer.style.opacity = 1;
-
               startButton.focus();
-
             }, 1000); 
 
           }, logoAnimationDuration + logoDisplayTime); 
 
-        }, 500); // Espera inicial de 0.5s para asegurar que la página cargue los estilos.
-
+        }, 500); 
 
         // Lógica del Botón: Desbloquear el navegador para RA
         startButton.addEventListener('click', () => {
           startButtonContainer.style.display = 'none';
           scene.style.visibility = 'visible';
+
+          const videoAssets = document.querySelectorAll('video');
+          Promise.all(Array.from(videoAssets).map(video => 
+            video.play().catch(e => console.warn(`Error al desbloquear video ${video.id}:`, e))
+          )).then(() => {
+            videoAssets.forEach(video => {
+              video.pause();
+              video.currentTime = 0;
+            });
+            console.log("Videos listos para la detección de targets.");
+          }).catch(error => {
+            console.error("Error general al desbloquear videos:", error);
+            alert("Hubo un error al iniciar. Asegúrate de dar permisos de cámara.");
+          });
         });
       });
     </script>
